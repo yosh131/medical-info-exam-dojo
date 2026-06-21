@@ -47,4 +47,18 @@ h2 { margin:0 0 12px; font-size:1.05rem; }
 .progress > i { display:block; height:100%; background:linear-gradient(90deg,var(--brand),#39a787); border-radius:inherit; }
 .modal-backdrop { position:fixed; z-index:50; inset:0; display:grid; place-items:end center; padding:16px; background:rgba(10,25,20,.45); }
 .modal { width:min(100%,520px); max-height:88vh; overflow:auto; background:white; border-radius:22px; padding:20px; }
+.table-scroll { overflow-x:auto; margin:12px 0; border:1px solid var(--line); border-radius:14px; background:white; }
+.table-scroll table { width:100%; min-width:420px; border-collapse:collapse; font-size:.88rem; }
+.table-scroll caption { padding:10px; font-weight:800; text-align:left; }
+.table-scroll th,.table-scroll td { padding:9px 10px; border:1px solid var(--line); vertical-align:top; }
+.table-scroll th { background:var(--brand-soft); }
+.media-list { display:grid; gap:12px; margin:12px 0; }
+.question-media { margin:0; padding:10px; border:1px solid var(--line); border-radius:16px; background:white; }
+.question-media img { display:block; width:100%; height:auto; max-height:70vh; object-fit:contain; border-radius:10px; }
+.question-media figcaption { margin-top:7px; color:var(--muted); font-size:.72rem; overflow-wrap:anywhere; }
+.media-file { display:flex; align-items:center; gap:12px; padding:14px; border:1px solid var(--line); border-radius:14px; background:white; color:var(--ink); text-decoration:none; }
+.media-file span { display:grid; flex:1; min-width:0; }
+.media-file b { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.media-file small { color:var(--muted); }
+.media-placeholder { padding:14px; border-radius:14px; background:var(--brand-soft); color:var(--brand); }
 @media (min-width:640px) { .app-shell { padding-top:38px; } .modal-backdrop { place-items:center; } }

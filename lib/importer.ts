@@ -99,14 +99,16 @@ export async function previewBundle(file: File): Promise<ImportPreview> {
     }
     let mediaError = "";
     for (const media of parsed.data.media) {
+      mediaCount++;
       const bytes = files[media.path];
-      if (!safeBundlePath(media.path) || !media.path.startsWith("media/")) mediaError = "メディアパスが不正です";
-      else if (!bytes) mediaError = `メディアがありません: ${media.path}`;
-      else if (bytes.byteLength > MAX_MEDIA_BYTES) mediaError = `メディアが25MBを超えています: ${media.path}`;
-      else if (seenMediaIds.has(media.id)) mediaError = `メディアIDがバンドル内で重複しています: ${media.id}`;
-      else if (await sha256(bytes) !== media.sha256.toLowerCase()) mediaError = `メディアのSHA-256が一致しません: ${media.path}`;
-      if (mediaError) break;
-      seenMediaIds.add(media.id); mediaCount++;
+      let itemError = "";
+      if (!safeBundlePath(media.path) || !media.path.startsWith("media/")) itemError = "メディアパスが不正です";
+      else if (!bytes) itemError = `メディアがありません: ${media.path}`;
+      else if (bytes.byteLength > MAX_MEDIA_BYTES) itemError = `メディアが25MBを超えています: ${media.path}`;
+      else if (seenMediaIds.has(media.id)) itemError = `メディアIDがバンドル内で重複しています: ${media.id}`;
+      else if (await sha256(bytes) !== media.sha256.toLowerCase()) itemError = `メディアのSHA-256が一致しません: ${media.path}`;
+      seenMediaIds.add(media.id);
+      if (!mediaError && itemError) mediaError = itemError;
     }
     if (mediaError) { rows.push({ index, status: "invalid", question: parsed.data, message: mediaError }); continue; }
     const hash = await contentHash(parsed.data); const key = `${parsed.data.examYear}|${parsed.data.subject}|${parsed.data.questionNo}`;

@@ -4,6 +4,8 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useLiveQuery } from "dexie-react-hooks";
 import { ArrowRight, Brain, Clipboard, Plus, X } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { QuestionMediaList } from "@/components/QuestionMedia";
+import { SafeTable } from "@/components/SafeTable";
 import { db, isoNow, makeId } from "@/lib/db";
 import { isCorrectAnswer } from "@/lib/importer";
 import { ensureSchedule } from "@/lib/scheduler";
@@ -17,6 +19,7 @@ function Practice() {
   const all=useLiveQuery(()=>db.questions.orderBy("examYear").reverse().toArray(),[])??[];
   const question=useLiveQuery(async()=>{if(requested)return db.questions.get(requested);const questions=await db.questions.orderBy("examYear").reverse().toArray();const attempts=await db.attempts.toArray();const answered=new Set(attempts.map((a)=>a.questionId));return questions.find((q)=>!answered.has(q.id))??questions[0]},[requested]);
   const choices=useLiveQuery(()=>question?db.choices.where("questionId").equals(question.id).sortBy("label"):[],[question?.id])??[];
+  const media=useLiveQuery(()=>question?db.questionMedia.where("questionId").equals(question.id).sortBy("order"):[],[question?.id])??[];
   const [answers,setAnswers]=useState<string[]>([]); const [confidence,setConfidence]=useState<Confidence>(); const [attemptId,setAttemptId]=useState<string>(); const [correct,setCorrect]=useState<boolean>(); const started=useRef(Date.now());
   const [primary,setPrimary]=useState<ErrorReason>(); const [secondary,setSecondary]=useState<ErrorReason[]>([]); const [reading,setReading]=useState<ReadingMistakeType>(); const [note,setNote]=useState(""); const [analysisSaved,setAnalysisSaved]=useState(false); const [cardOpen,setCardOpen]=useState(false); const [message,setMessage]=useState("");
   useEffect(()=>{setAnswers([]);setConfidence(undefined);setAttemptId(undefined);setCorrect(undefined);setPrimary(undefined);setSecondary([]);setReading(undefined);setNote("");setAnalysisSaved(false);setCardOpen(false);setMessage("");started.current=Date.now()},[question?.id]);
@@ -30,9 +33,10 @@ function Practice() {
   const needsAnalysis=correct===false||(correct===true&&confidence!=="high");
   return <><PageHeader eyebrow={`${question.examYear} / ${SUBJECT_LABELS[question.subject]}`} title={`問 ${question.questionNo}`}/>
     <article className="card" style={{fontSize:"1.04rem",lineHeight:1.8,whiteSpace:"pre-wrap",marginBottom:12}}>{question.body}</article>
+    <SafeTable html={question.bodyTableHtml}/><QuestionMediaList items={media.filter((item)=>item.role==="question")}/>
     <section className="stack">{choices.map((choice)=><label className="choice" key={choice.id}><input type={multiple?"checkbox":"radio"} name="answer" checked={answers.includes(choice.label)} onChange={()=>toggle(choice.label)}/><b>{choice.label}</b><span>{choice.text}</span></label>)}</section>
     {correct===undefined && <section className="card stack" style={{marginTop:12}}><h2>確信度</h2><div className="segmented">{Object.entries(CONFIDENCE_LABELS).map(([value,label])=><label key={value}><input type="radio" checked={confidence===value} onChange={()=>setConfidence(value as Confidence)}/>{label}</label>)}</div><button className="button" disabled={!answers.length||!confidence} onClick={grade}>採点する</button></section>}
-    {correct!==undefined && <section className="card stack" style={{marginTop:12,borderColor:correct?"#80c9aa":"#e8a7a1"}}><div className={correct?"success":"error"} style={{fontSize:"1.35rem",fontWeight:850}}>{correct?"正解です":"不正解です"}</div><div><b>正解：</b>{Array.isArray(question.correctAnswer)?question.correctAnswer.join(", "):question.correctAnswer}</div>{question.explanation&&<div><b>解説</b><p style={{whiteSpace:"pre-wrap",lineHeight:1.7}}>{question.explanation}</p></div>}</section>}
+    {correct!==undefined && <section className="card stack" style={{marginTop:12,borderColor:correct?"#80c9aa":"#e8a7a1"}}><div className={correct?"success":"error"} style={{fontSize:"1.35rem",fontWeight:850}}>{correct?"正解です":"不正解です"}</div><div><b>正解：</b>{Array.isArray(question.correctAnswer)?question.correctAnswer.join(", "):question.correctAnswer}</div>{question.explanation&&<div><b>解説</b><p style={{whiteSpace:"pre-wrap",lineHeight:1.7}}>{question.explanation}</p></div>}<SafeTable html={question.explanationTableHtml}/><QuestionMediaList items={media.filter((item)=>item.role==="explanation")}/></section>}
     {attemptId&&needsAnalysis&&!analysisSaved&&<section className="card stack" style={{marginTop:12}}><div><h2 style={{marginBottom:4}}>A〜Fで振り返る</h2><p className="muted tiny" style={{margin:0}}>{correct?"迷った理由を残せます（任意）":"primary reasonを選んでください。後回しにもできます。"}</p></div>
       <div className="stack">{Object.entries(ERROR_LABELS).map(([value,label])=><label className="choice" key={value}><input type="radio" name="reason" checked={primary===value} onChange={()=>setPrimary(value as ErrorReason)}/><b>{value}</b><span>{label}</span></label>)}</div>
       {primary&&<div className="field"><span>副次的な理由（複数可）</span><div style={{display:"flex",flexWrap:"wrap",gap:7}}>{(Object.keys(ERROR_LABELS) as ErrorReason[]).filter((x)=>x!==primary).map((x)=><label className="pill" key={x}><input type="checkbox" checked={secondary.includes(x)} onChange={()=>setSecondary((old)=>old.includes(x)?old.filter((v)=>v!==x):[...old,x])}/>{x}</label>)}</div></div>}
