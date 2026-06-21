@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/medical-info-exam-question-import.schema.json",
+  "title": "Medical Information Technologist Exam Question Import",
+  "description": "個人学習用PWAに過去問データをインポートするためのJSONスキーマ。実在過去問データは公開リポジトリに含めないこと。",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "examYear",
+      "subject",
+      "questionNo",
+      "body",
+      "questionType",
+      "choices",
+      "correctAnswer"
+    ],
+    "properties": {
+      "examYear": {
+        "type": "integer",
+        "minimum": 2000,
+        "maximum": 2100,
+        "examples": [
+          2025
+        ]
+      },
+      "subject": {
+        "type": "string",
+        "enum": [
+          "information",
+          "medical",
+          "system"
+        ],
+        "description": "information=情報処理技術系, medical=医学・医療系, system=医療情報システム系"
+      },
+      "questionNo": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "body": {
+        "type": "string",
+        "minLength": 1,
+        "description": "問題文。個人学習用ローカルDBにのみ保存する想定。"
+      },
+      "questionType": {
+        "type": "string",
+        "enum": [
+          "single_choice",
+          "multiple_choice",
+          "true_false_combination",
+          "other"
+        ]
+      },
+      "choices": {
+        "type": "array",
+        "minItems": 2,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "label",
+            "text"
+          ],
+          "properties": {
+            "label": {
+              "type": "string",
+              "minLength": 1,
+              "examples": [
+                "1",
+                "2",
+                "A"
+              ]
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1
+            },
+            "isCorrect": {
+              "type": "boolean",
+              "description": "任意。correctAnswer側を正とする。"
+            }
+          }
+        }
+      },
+      "correctAnswer": {
+        "oneOf": [
+          {
+            "type": "string",
+            "minLength": 1
+          },
+          {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          }
+        ],
+        "description": "単一選択なら文字列、複数選択なら配列。"
+      },
+      "explanation": {
+        "type": "string",
+        "description": "既存解説。なければ省略可。"
+      },
+      "topicSummary": {
+        "type": "string",
+        "description": "問題文ではなく、自分用の短い論点要約。"
+      },
+      "source": {
+        "type": "string",
+        "description": "出典メモ。例: ユーザー保有DB、過去問集など。"
+      },
+      "sourceUrl": {
+        "type": "string",
+        "format": "uri"
+      },
+      "rightsNote": {
+        "type": "string",
+        "description": "例: 個人学習目的。"
+      }
+    }
+  }
+}

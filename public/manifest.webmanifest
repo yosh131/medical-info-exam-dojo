@@ -1,0 +1,11 @@
+{
+  "name": "医療情報技師 過去問道場",
+  "short_name": "過去問道場",
+  "description": "個人学習専用のローカルファースト過去問PWA",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f8f7",
+  "theme_color": "#0b6b58",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

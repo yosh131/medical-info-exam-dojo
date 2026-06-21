@@ -1,0 +1,36 @@
+[
+  {
+    "examYear": 2025,
+    "subject": "system",
+    "questionNo": 1,
+    "body": "これはサンプル用の架空問題文です。実在の過去問本文は公開リポジトリに含めないでください。",
+    "questionType": "single_choice",
+    "choices": [
+      {
+        "label": "1",
+        "text": "架空の選択肢1"
+      },
+      {
+        "label": "2",
+        "text": "架空の選択肢2"
+      },
+      {
+        "label": "3",
+        "text": "架空の選択肢3"
+      },
+      {
+        "label": "4",
+        "text": "架空の選択肢4"
+      },
+      {
+        "label": "5",
+        "text": "架空の選択肢5"
+      }
+    ],
+    "correctAnswer": "3",
+    "explanation": "これはサンプル用の架空解説です。",
+    "topicSummary": "架空論点の確認",
+    "source": "sample",
+    "rightsNote": "サンプルデータ"
+  }
+]

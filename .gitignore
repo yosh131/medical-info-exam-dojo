@@ -1,0 +1,19 @@
+node_modules/
+.next/
+out/
+coverage/
+*.log
+*.tsbuildinfo
+.env*
+!.env.example
+
+# Never commit locally exported/imported question data.
+backups/
+imports/
+data.zip
+db.zip
+*.db
+*.backup.json
+questions*.json
+!sample_questions.json
+!question_import_schema.json
