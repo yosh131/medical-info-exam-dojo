@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/medical-info-exam-question-bundle-manifest.schema.json",
+  "title": "Medical Information Exam Question Bundle Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "schemaVersion", "createdAt", "questionsFile", "questionCount", "mediaCount"],
+  "properties": {
+    "format": { "const": "medical-info-exam-question-bundle" },
+    "schemaVersion": { "const": 1 },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "questionsFile": { "const": "questions.json" },
+    "questionCount": { "type": "integer", "minimum": 0 },
+    "mediaCount": { "type": "integer", "minimum": 0 }
+  }
+}

@@ -1,9 +1,10 @@
 import Dexie, { type EntityTable } from "dexie";
-import type { AppSetting, Attempt, Card, Choice, ErrorAnalysis, Question, ReviewLog, ReviewSchedule } from "./types";
+import type { AppSetting, Attempt, Card, Choice, ErrorAnalysis, Question, QuestionMedia, ReviewLog, ReviewSchedule } from "./types";
 
 export class ExamDatabase extends Dexie {
   questions!: EntityTable<Question, "id">;
   choices!: EntityTable<Choice, "id">;
+  questionMedia!: EntityTable<QuestionMedia, "id">;
   attempts!: EntityTable<Attempt, "id">;
   errorAnalyses!: EntityTable<ErrorAnalysis, "id">;
   cards!: EntityTable<Card, "id">;
@@ -16,6 +17,7 @@ export class ExamDatabase extends Dexie {
     this.version(1).stores({
       questions: "id, &[examYear+subject+questionNo], &contentHash, examYear, subject, questionNo",
       choices: "id, questionId, &[questionId+label]",
+      questionMedia: "id, questionId, [questionId+role], mimeType, sha256",
       attempts: "id, questionId, attemptedAt, isCorrect, confidence",
       errorAnalyses: "id, &attemptId, questionId, primaryReason, createdAt",
       cards: "id, questionId, subject, cardType, dueAt, isImportant, updatedAt",

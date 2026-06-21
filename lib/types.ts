@@ -8,14 +8,21 @@ export type ReadingMistakeType =
 export type CardType = "term" | "judgement" | "comparison" | "workflow" | "calculation" | "reading_mistake";
 export type ReviewResult = "good" | "hard" | "again";
 export type ReviewTargetType = "question" | "card";
+export type MediaRole = "question" | "explanation";
 
 export interface Question {
   id: string; examYear: number; subject: Subject; questionNo: number; body: string;
   questionType: QuestionType; correctAnswer: string | string[]; explanation?: string;
-  topicSummary?: string; source?: string; sourceUrl?: string; rightsNote?: string;
+  bodyTableHtml?: string; explanationTableHtml?: string; topicSummary?: string;
+  source?: string; sourceUrl?: string; rightsNote?: string;
   contentHash: string; createdAt: string; updatedAt: string;
 }
 export interface Choice { id: string; questionId: string; label: string; text: string; isCorrect?: boolean }
+export interface QuestionMedia {
+  id: string; questionId: string; role: MediaRole; order: number; fileName: string;
+  mimeType: "image/png" | "image/jpeg" | "image/webp" | "image/gif" | "application/pdf";
+  sha256: string; blob: Blob; createdAt: string;
+}
 export interface Attempt {
   id: string; questionId: string; userAnswer: string | string[]; isCorrect: boolean;
   confidence: Confidence; elapsedSec?: number; attemptedAt: string;
@@ -40,14 +47,24 @@ export interface AppSetting { key: string; value: unknown; updatedAt: string }
 export interface AppSettings { examDate?: string; lastBackupAt?: string; storagePersisted?: boolean }
 
 export interface ImportChoice { label: string; text: string; isCorrect?: boolean }
+export interface ImportMedia {
+  id: string; role: MediaRole; order: number; path: string; fileName: string;
+  mimeType: QuestionMedia["mimeType"]; sha256: string;
+}
 export interface ImportQuestion {
   examYear: number; subject: Subject; questionNo: number; body: string; questionType: QuestionType;
   choices: ImportChoice[]; correctAnswer: string | string[]; explanation?: string; topicSummary?: string;
+  bodyTableHtml?: string; explanationTableHtml?: string; media: ImportMedia[];
   source?: string; sourceUrl?: string; rightsNote?: string;
 }
+export interface QuestionBundleManifest {
+  format: "medical-info-exam-question-bundle"; schemaVersion: 1; createdAt: string;
+  questionsFile: "questions.json"; questionCount: number; mediaCount: number;
+}
+export type BackupMediaRecord = Omit<QuestionMedia, "blob"> & { path: string };
 export interface BackupEnvelope {
   schemaVersion: 1; exportedAt: string; app: "medical-info-exam-dojo";
-  data: { questions: Question[]; choices: Choice[]; attempts: Attempt[]; errorAnalyses: ErrorAnalysis[];
+  data: { questions: Question[]; choices: Choice[]; media: BackupMediaRecord[]; attempts: Attempt[]; errorAnalyses: ErrorAnalysis[];
     cards: Card[]; reviewSchedules: ReviewSchedule[]; reviewLogs: ReviewLog[]; settings: AppSetting[] };
 }
 

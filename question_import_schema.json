@@ -14,7 +14,8 @@
       "body",
       "questionType",
       "choices",
-      "correctAnswer"
+      "correctAnswer",
+      "media"
     ],
     "properties": {
       "examYear": {
@@ -104,6 +105,31 @@
       "explanation": {
         "type": "string",
         "description": "既存解説。なければ省略可。"
+      },
+      "bodyTableHtml": {
+        "type": "string",
+        "description": "問題本文に付随するtable要素のみのHTML。表示時にサニタイズする。"
+      },
+      "explanationTableHtml": {
+        "type": "string",
+        "description": "解説に付随するtable要素のみのHTML。表示時にサニタイズする。"
+      },
+      "media": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "role", "order", "path", "fileName", "mimeType", "sha256"],
+          "properties": {
+            "id": { "type": "string", "minLength": 1 },
+            "role": { "type": "string", "enum": ["question", "explanation"] },
+            "order": { "type": "integer", "minimum": 0 },
+            "path": { "type": "string", "pattern": "^media/" },
+            "fileName": { "type": "string", "minLength": 1 },
+            "mimeType": { "type": "string", "enum": ["image/png", "image/jpeg", "image/webp", "image/gif", "application/pdf"] },
+            "sha256": { "type": "string", "pattern": "^[a-fA-F0-9]{64}$" }
+          }
+        }
       },
       "topicSummary": {
         "type": "string",
