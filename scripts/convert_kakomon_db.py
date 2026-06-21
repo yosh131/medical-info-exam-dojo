@@ -14,8 +14,10 @@ from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
+from urllib.parse import unquote, urlparse
 
 SUBJECTS = {"情報処理技術系": "information", "医学医療系": "medical", "医学・医療系": "medical", "医療情報システム系": "system"}
+SUBJECT_SLUGS = {"information": "it", "medical": "med", "system": "sys"}
 ALLOWED_MEDIA = {"image/png", "image/jpeg", "image/webp", "image/gif", "application/pdf"}
 TABLE_RE = re.compile(r"<table\b[^>]*>.*?</table\s*>", re.IGNORECASE | re.DOTALL)
 
@@ -28,14 +30,20 @@ def extract_tables(value: Any) -> str:
     return "\n".join(TABLE_RE.findall(clean(value)))
 
 
-def resolve_media(db_path: Path, local_path: str) -> Path | None:
+def resolve_media(db_path: Path, local_path: str, original_url: str, year: int, subject: str, question_no: int) -> tuple[Path | None, Path | None]:
+    expected: Path | None = None
     parts = PurePosixPath(local_path.replace("\\", "/")).parts
     if "media" in parts:
-        candidate = db_path.parent.joinpath(*parts[parts.index("media"):])
-        if candidate.is_file():
-            return candidate
+        expected = db_path.parent.joinpath(*parts[parts.index("media"):])
+        if expected.is_file(): return expected, expected
     candidate = db_path.parent / local_path
-    return candidate if candidate.is_file() else None
+    if local_path and candidate.is_file(): return candidate, candidate
+    url_name = Path(unquote(urlparse(original_url).path)).name
+    if url_name:
+        fallback = db_path.parent / "media" / str(year) / SUBJECT_SLUGS[subject] / f"q{question_no:02d}" / url_name
+        expected = expected or fallback
+        if fallback.is_file(): return fallback, fallback
+    return None, expected
 
 
 def write_bundle(path: Path, questions: list[dict[str, Any]], media_sources: dict[str, Path]) -> None:
@@ -65,7 +73,7 @@ def convert(db_path: Path, output_dir: Path) -> dict[str, Any]:
         "SELECT question_id,generated_explanation FROM question_enrichments WHERE status='succeeded' AND generated_explanation IS NOT NULL ORDER BY updated_at")}
 
     converted: list[dict[str, Any]] = []; excluded: list[dict[str, Any]] = []; media_warnings: list[dict[str, Any]] = []
-    media_sources: dict[str, Path] = {}; subject_counts: Counter[str] = Counter(); available_media = 0; missing_media = 0
+    media_sources: dict[str, Path] = {}; subject_counts: Counter[str] = Counter(); available_media = 0; missing_media = 0; missing_media_details: list[dict[str, Any]] = []
     for question in connection.execute("SELECT * FROM questions ORDER BY year,domain_jp,question_no"):
         subject = SUBJECTS.get(clean(question["domain_jp"])); choices = list(connection.execute(
             "SELECT * FROM question_choices WHERE question_id=? ORDER BY choice_no", (question["id"],)))
@@ -77,10 +85,10 @@ def convert(db_path: Path, output_dir: Path) -> dict[str, Any]:
 
         media_items: list[dict[str, Any]] = []
         for media in connection.execute("SELECT * FROM question_media WHERE question_id=? ORDER BY media_role,media_order,id", (question["id"],)):
-            local_path = clean(media["local_path"]); source_file = resolve_media(db_path, local_path) if local_path else None
+            local_path = clean(media["local_path"]); source_file, expected_path = resolve_media(db_path, local_path, clean(media["original_url"]), question["year"], subject, question["question_no"])
             mime = clean(media["content_type"]) or (mimetypes.guess_type(local_path)[0] or "")
             if not source_file or mime not in ALLOWED_MEDIA:
-                missing_media += 1; continue
+                missing_media += 1; missing_media_details.append({**metadata, "mediaId": media["id"], "role": media["media_role"], "order": media["media_order"], "mimeType": mime or None, "expectedLocalPath": str(expected_path) if expected_path else None}); continue
             file_hash = hashlib.sha256(source_file.read_bytes()).hexdigest(); expected = clean(media["file_sha256"]).lower()
             if expected and expected != file_hash:
                 media_warnings.append({**metadata, "mediaId": media["id"], "reason": "sha256_mismatch"}); missing_media += 1; continue
@@ -116,7 +124,7 @@ def convert(db_path: Path, output_dir: Path) -> dict[str, Any]:
         "latestFiveYears": latest, "latestFiveYearQuestions": sum(item["examYear"] in latest for item in converted),
         "countsBySubject": dict(sorted(subject_counts.items())), "countsByYear": dict(sorted(Counter(str(item["examYear"]) for item in converted).items())),
         "availableMediaFiles": available_media, "missingMediaReferences": missing_media, "reviewWarnings": len(media_warnings),
-        "excluded": excluded, "mediaWarnings": media_warnings}
+        "excluded": excluded, "missingMedia": missing_media_details, "mediaWarnings": media_warnings}
     output_dir.mkdir(parents=True, exist_ok=True)
     (output_dir / "conversion_report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return report
