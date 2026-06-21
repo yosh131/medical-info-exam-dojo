@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "tsc --noEmit",
-    "validate:questions": "tsx scripts/validate_question_json.ts",
+    "validate:bundle": "tsx scripts/validate_question_bundle.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },
