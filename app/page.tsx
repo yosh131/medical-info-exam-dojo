@@ -2,9 +2,10 @@
 import Link from "next/link";
 import { useLiveQuery } from "dexie-react-hooks";
 import { differenceInCalendarDays, startOfDay } from "date-fns";
-import { ArrowRight, BookOpen, Download, Layers3, Sparkles } from "lucide-react";
+import { ArrowRight, BookOpen, ChevronRight, Download, Layers3, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { db } from "@/lib/db";
+import { latestAttempts } from "@/lib/recentAttempts";
 
 export default function HomePage() {
   const data = useLiveQuery(async () => {
@@ -17,7 +18,7 @@ export default function HomePage() {
     const answeredIds = new Set(attempts.map((a) => a.questionId));
     const answered = target.filter((q) => answeredIds.has(q.id)).length;
     const pending = attempts.filter((a) => !a.isCorrect && !analyses.some((x) => x.attemptId === a.id)).length;
-    const recent = attempts.slice().sort((a,b)=>b.attemptedAt.localeCompare(a.attemptedAt)).slice(0,20);
+    const recent = latestAttempts(attempts,20);
     const accuracy = recent.length ? Math.round(recent.filter((a)=>a.isCorrect).length / recent.length * 100) : 0;
     const examDate = typeof exam?.value === "string" ? exam.value : undefined;
     const days = examDate ? differenceInCalendarDays(startOfDay(new Date(examDate)), startOfDay(new Date())) : undefined;
@@ -37,7 +38,7 @@ export default function HomePage() {
     </section>
     <section className="grid-2" style={{marginBottom:12}}>
       <Link href="/review" className="card" style={{textDecoration:"none",color:"inherit"}}><span className="pill"><Sparkles size={14}/>今日</span><div className="metric" style={{marginTop:8}}>{d.due}</div><div className="muted tiny">復習する項目</div></Link>
-      <div className="card"><span className="pill">直近20問</span><div className="metric" style={{marginTop:8}}>{d.accuracy}%</div><div className="muted tiny">正答率</div></div>
+      <Link href="/questions?filter=recent20" className="card metric-link"><span className="pill">直近20問</span><div className="metric" style={{marginTop:8}}>{d.accuracy}%</div><div className="metric-link-foot"><span className="muted tiny">正答率</span><ChevronRight size={17}/></div></Link>
     </section>
     {d.pending > 0 && <Link href="/questions?filter=pending" className="notice" style={{display:"flex",justifyContent:"space-between",color:"inherit",textDecoration:"none",marginBottom:12}}>未完了の誤答分類が {d.pending} 件あります <ArrowRight size={18}/></Link>}
     {d.backupDue && <Link href="/settings" className="notice" style={{display:"flex",justifyContent:"space-between",color:"inherit",textDecoration:"none",marginBottom:12}}>バックアップを保存しておきましょう <ArrowRight size={18}/></Link>}

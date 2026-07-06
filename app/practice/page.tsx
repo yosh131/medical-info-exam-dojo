@@ -15,6 +15,10 @@ import { CARD_TYPE_LABELS, CONFIDENCE_LABELS, ERROR_LABELS, SUBJECT_LABELS, type
 
 const readingOptions: [ReadingMistakeType,string][] = [["missed_negative","誤っているものを読み落とした"],["missed_positive","正しいものを読み落とした"],["missed_best_answer","最も適切を見落とした"],["wrong_subject","主体を取り違えた"],["missed_condition","時点・条件を見落とした"],["missed_number_or_unit","数値・単位を読み落とした"],["other","その他"]];
 
+function QuestionNavigation({hasPrevious,hasNext,onMove,position}:{hasPrevious:boolean;hasNext:boolean;onMove:(direction:-1|1)=>void;position:"top"|"bottom"}){
+  return <nav className={`question-nav ${position}`} aria-label={`${position==="top"?"上部":"下部"}の問題移動`}><button className="button ghost" disabled={!hasPrevious} onClick={()=>onMove(-1)}><ChevronLeft size={18}/>前の問題</button><button className="button" disabled={!hasNext} onClick={()=>onMove(1)}>次の問題<ChevronRight size={18}/></button></nav>;
+}
+
 function Practice() {
   const params=useSearchParams(), router=useRouter(); const requested=params.get("id");
   const all=useLiveQuery(async()=>sortPracticeQuestions(await db.questions.toArray()),[])??[];
@@ -33,11 +37,13 @@ function Practice() {
   if(!question)return <><PageHeader eyebrow="Practice" title="問題演習"/><div className="card"><p>問題がまだありません。</p><a className="button" href="../import">インポートへ</a></div></>;
   const needsAnalysis=correct===false||(correct===true&&confidence!=="high");
   const currentIndex=all.findIndex((item)=>item.id===question.id); const hasPrevious=currentIndex>0; const hasNext=currentIndex>=0&&currentIndex<all.length-1;
+  const correctLabels=new Set(Array.isArray(question.correctAnswer)?question.correctAnswer:[question.correctAnswer]);
   return <><PageHeader eyebrow={`${question.examYear} / ${SUBJECT_LABELS[question.subject]} · ${currentIndex+1} / ${all.length}`} title={`問 ${question.questionNo}`}/>
+    <QuestionNavigation hasPrevious={hasPrevious} hasNext={hasNext} onMove={move} position="top"/>
     <article className="question-body">{question.body}</article>
     <SafeTable html={question.bodyTableHtml}/><QuestionMediaList items={media.filter((item)=>item.role==="question")}/>
     {correct===undefined&&<section className="confidence-row"><span>確信度</span><div className="segmented">{Object.entries(CONFIDENCE_LABELS).map(([value,label])=><label key={value}><input type="radio" checked={confidence===value} onChange={()=>setConfidence(value as Confidence)}/>{label}</label>)}</div></section>}
-    <section className="choice-list">{choices.map((choice)=><label className="choice" key={choice.id}><input type={multiple?"checkbox":"radio"} name="answer" checked={answers.includes(choice.label)} onChange={()=>void toggle(choice.label)}/><b>{choice.label}</b><span>{choice.text}</span></label>)}</section>
+    <section className="choice-list" aria-label="選択肢">{choices.map((choice)=>{const selected=answers.includes(choice.label);const graded=correct!==undefined;const answer=correctLabels.has(choice.label);return <button type="button" className={`answer-tile${selected?" is-selected":""}${graded&&answer?" is-correct-answer":""}${graded&&selected&&!answer?" is-wrong-answer":""}`} aria-pressed={selected} disabled={graded} onClick={()=>void toggle(choice.label)} key={choice.id}><span className="answer-label">{choice.label}</span><span>{choice.text}</span></button>})}</section>
     {correct===undefined&&multiple&&<button className="button primary-action" disabled={!answers.length} onClick={()=>void grade()}>回答を確定</button>}
     {correct!==undefined && <section className={`result-panel ${correct?"is-correct":"is-wrong"}`}><div className={correct?"success":"error"} style={{fontSize:"1.2rem",fontWeight:800}}>{correct?"正解":"不正解"}</div><div><b>正解：</b>{Array.isArray(question.correctAnswer)?question.correctAnswer.join(", "):question.correctAnswer}</div>{question.explanation&&<div><b>解説</b><p style={{whiteSpace:"pre-wrap",lineHeight:1.7}}>{question.explanation}</p></div>}<SafeTable html={question.explanationTableHtml}/><QuestionMediaList items={media.filter((item)=>item.role==="explanation")}/></section>}
     {attemptId&&needsAnalysis&&!analysisSaved&&<section className="card stack" style={{marginTop:12}}><div><h2 style={{marginBottom:4}}>A〜Fで振り返る</h2><p className="muted tiny" style={{margin:0}}>{correct?"迷った理由を残せます（任意）":"primary reasonを選んでください。後回しにもできます。"}</p></div>
@@ -47,7 +53,7 @@ function Practice() {
       <textarea className="textarea" placeholder="短いメモ（任意）" value={note} onChange={(e)=>setNote(e.target.value)}/><button className="button" disabled={!primary} onClick={saveAnalysis}>分類を保存</button>
     </section>}
     {attemptId&&<div className="grid-2" style={{marginTop:12}}><button className="button secondary" onClick={()=>setCardOpen(true)}><Plus size={18}/>カード</button><button className="button ghost" onClick={copyTemplate}><Clipboard size={18}/>相談コピー</button></div>}
-    {message&&<p className="success tiny">{message}</p>}<nav className="question-nav" aria-label="問題の移動"><button className="button ghost" disabled={!hasPrevious} onClick={()=>move(-1)}><ChevronLeft size={18}/>前の問題</button><button className="button" disabled={!hasNext} onClick={()=>move(1)}>次の問題<ChevronRight size={18}/></button></nav>
+    {message&&<p className="success tiny">{message}</p>}<QuestionNavigation hasPrevious={hasPrevious} hasNext={hasNext} onMove={move} position="bottom"/>
     {cardOpen&&<CardModal questionId={question.id} subject={question.subject} initialReason={primary} onClose={()=>setCardOpen(false)} onSaved={()=>{setCardOpen(false);setMessage("カードを作成しました")}}/>}
   </>;
 }
