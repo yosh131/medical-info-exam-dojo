@@ -28,7 +28,7 @@ export default function HomePage() {
   const d = data ?? { questions:0, answered:0, due:0, pending:0, accuracy:0, days:undefined, backupDue:false };
   const progress = d.questions ? Math.round(d.answered / d.questions * 100) : 0;
 
-  return <><PageHeader eyebrow="Medical Information" title="今日も一問ずつ。" settings/>
+  return <><PageHeader title="医療情報技師 過去問道場" settings/>
     <section className="card" style={{background:"linear-gradient(145deg,#0b6b58,#075244)",color:"white",marginBottom:12}}>
       <div className="tiny" style={{opacity:.75}}>試験日まで</div>
       <div className="metric">{d.days === undefined ? "未設定" : d.days >= 0 ? `あと ${d.days} 日` : "試験日経過"}</div>
