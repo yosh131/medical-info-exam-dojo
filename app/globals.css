@@ -85,9 +85,30 @@ h2 { margin:0 0 12px; font-size:1.05rem; }
 .result-panel { display:grid; gap:10px; margin-top:14px; padding:14px 0; border-top:2px solid var(--line); border-bottom:1px solid var(--line); }
 .result-panel.is-correct { border-top-color:#18865a; }
 .result-panel.is-wrong { border-top-color:#c84b3f; }
+.result-verdict { display:flex; align-items:center; gap:9px; font-size:1.25rem; }
+.result-verdict svg { width:28px; height:28px; }
+.result-panel.is-correct .result-verdict { color:#087443; }
+.result-panel.is-wrong .result-verdict { color:#b42318; }
+.result-reveal { animation:result-reveal .36s cubic-bezier(.2,.8,.2,1); }
+@keyframes result-reveal { from { opacity:0; transform:translateY(8px) scale(.985); } to { opacity:1; transform:none; } }
 .question-nav { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:16px; }
 .question-nav.top { margin:-4px 0 14px; }
 .question-nav.bottom { margin-top:16px; }
+.practice-setup { display:grid; gap:24px; }
+.filter-group { display:grid; gap:10px; }
+.filter-heading { display:flex; align-items:baseline; justify-content:space-between; gap:12px; border-bottom:1px solid var(--line); padding-bottom:7px; }
+.filter-heading h2 { margin:0; font-size:1rem; }
+.filter-heading span { color:var(--muted); font-size:.75rem; }
+.filter-grid { display:grid; gap:7px; }
+.filter-grid.years { grid-template-columns:repeat(auto-fit,minmax(94px,1fr)); }
+.filter-grid.subjects { grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); }
+.filter-tile { min-height:42px; padding:8px 10px; border:1px solid var(--line); border-radius:3px; background:white; color:var(--ink); font-weight:700; }
+.filter-tile:hover { border-color:var(--brand); }
+.filter-tile.is-selected { border-color:var(--brand); background:var(--brand-soft); color:var(--brand); box-shadow:inset 3px 0 0 var(--brand); }
+.setup-summary { position:sticky; bottom:72px; z-index:5; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px; border:1px solid var(--line); background:rgba(255,255,255,.96); box-shadow:0 8px 22px rgba(20,55,45,.09); backdrop-filter:blur(10px); }
+.setup-summary > div { display:grid; }
+.setup-summary b { font-size:1.1rem; }
+.setup-summary span { color:var(--muted); font-size:.72rem; }
 .settings-section { padding:4px 0 20px; margin-bottom:20px; border-bottom:1px solid var(--line); }
 .settings-section h2 { display:flex; align-items:center; gap:7px; }
 .settings-action-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:stretch; }
