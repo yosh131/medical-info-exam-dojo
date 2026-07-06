@@ -4,6 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "debug:seed": "tsx scripts/create_debug_bundle.ts",
+    "debug:clean": "tsx scripts/create_debug_bundle.ts --clean",
+    "verify:public": "tsx scripts/assert_no_private_public_data.ts",
+    "prebuild": "npm run verify:public",
     "build": "next build",
     "start": "next start",
     "lint": "tsc --noEmit",
