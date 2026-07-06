@@ -39,19 +39,19 @@ h2 { margin:0 0 12px; font-size:1.05rem; }
 .choice:has(input:checked) { border-color:var(--brand); box-shadow:inset 3px 0 0 var(--brand); background:#f4faf7; }
 .choice input { width:18px; height:18px; margin-top:1px; accent-color:var(--brand); flex:none; }
 .choice b { min-width:1.2em; }
-.answer-tile { width:100%; display:grid; grid-template-columns:34px minmax(0,1fr); align-items:start; gap:10px; padding:11px 12px; border:1px solid var(--line); border-radius:3px; background:white; color:var(--ink); text-align:left; line-height:1.45; }
+.answer-tile { width:100%; display:grid; grid-template-columns:24px 34px minmax(0,1fr); align-items:start; gap:9px; padding:11px 12px; border:1px solid var(--line); border-radius:3px; background:white; color:var(--ink); text-align:left; line-height:1.45; }
 .answer-tile:hover:not(:disabled) { border-color:var(--brand); background:#f6faf8; }
 .answer-tile:focus-visible { outline:3px solid rgba(8,106,88,.2); outline-offset:1px; }
 .answer-tile.is-selected { border-color:var(--brand); box-shadow:inset 4px 0 0 var(--brand); background:#edf7f3; }
 .answer-tile.is-correct-answer { border-color:#18865a; box-shadow:inset 4px 0 0 #18865a; background:#e9f7f0; }
 .answer-tile.is-wrong-answer { border-color:#c84b3f; box-shadow:inset 4px 0 0 #c84b3f; background:#fff0ee; }
 .answer-tile:disabled { cursor:default; opacity:1; }
+.answer-check { width:22px; height:22px; display:grid; place-items:center; margin-top:3px; border:1px solid #aebbb6; border-radius:2px; background:white; color:white; }
+.answer-tile.is-selected .answer-check,.answer-tile.is-correct-answer .answer-check { border-color:var(--brand); background:var(--brand); }
 .answer-label { width:28px; height:28px; display:grid; place-items:center; border:1px solid currentColor; border-radius:2px; color:var(--brand); font-weight:800; line-height:1; }
 .answer-tile.is-wrong-answer .answer-label { color:#b42318; }
-.segmented { display:grid; grid-template-columns:repeat(3,1fr); gap:7px; }
-.segmented label { text-align:center; padding:7px 6px; border:1px solid var(--line); border-radius:3px; background:white; font-size:.78rem; }
-.segmented label:has(input:checked) { color:white; background:var(--brand); border-color:var(--brand); }
-.segmented input { position:absolute; opacity:0; }
+.unknown-answer { margin-top:4px; background:#fafbf9; }
+.unknown-answer small { display:block; margin-top:2px; color:var(--muted); font-weight:400; }
 .notice { border-left:4px solid #dc9f24; background:#fff8e7; border-radius:2px; padding:11px 13px; font-size:.86rem; }
 .error { color:var(--danger); font-size:.84rem; }
 .success { color:#087443; }
@@ -79,8 +79,6 @@ h2 { margin:0 0 12px; font-size:1.05rem; }
 .media-file small { color:var(--muted); }
 .media-placeholder { padding:14px; border-radius:3px; background:var(--brand-soft); color:var(--brand); }
 .question-body { margin:0 0 12px; padding:4px 0 15px; border-bottom:1px solid var(--line); font-size:1.02rem; line-height:1.75; white-space:pre-wrap; }
-.confidence-row { display:grid; grid-template-columns:auto minmax(220px,340px); align-items:center; justify-content:space-between; gap:12px; padding:8px 0 12px; }
-.confidence-row > span { color:var(--muted); font-size:.8rem; font-weight:700; }
 .primary-action { width:100%; margin-top:10px; }
 .result-panel { display:grid; gap:10px; margin-top:14px; padding:14px 0; border-top:2px solid var(--line); border-bottom:1px solid var(--line); }
 .result-panel.is-correct { border-top-color:#18865a; }
@@ -119,5 +117,5 @@ h2 { margin:0 0 12px; font-size:1.05rem; }
 .debug-seed b { display:flex; align-items:center; gap:6px; }
 .debug-seed p { margin:4px 0 0; color:var(--muted); font-size:.78rem; }
 @media (max-width:520px) { .debug-seed { grid-template-columns:1fr; } }
-@media (max-width:420px) { .confidence-row { grid-template-columns:1fr; gap:6px; } .settings-action-row { grid-template-columns:minmax(0,1fr); } }
+@media (max-width:420px) { .settings-action-row { grid-template-columns:minmax(0,1fr); } }
 @media (min-width:640px) { .app-shell { padding-top:38px; } .modal-backdrop { place-items:center; } }
