@@ -85,6 +85,7 @@ h2 { margin:0 0 12px; font-size:1.05rem; }
 .result-panel { display:grid; gap:10px; margin-top:14px; padding:14px 0; border-top:2px solid var(--line); border-bottom:1px solid var(--line); }
 .result-panel.is-correct { border-top-color:#18865a; }
 .result-panel.is-wrong { border-top-color:#c84b3f; }
+.explanation-text { margin:7px 0 0; white-space:pre-line; line-height:1.75; overflow-wrap:anywhere; }
 .result-verdict { display:flex; align-items:center; gap:9px; font-size:1.25rem; }
 .result-verdict svg { width:28px; height:28px; }
 .result-panel.is-correct .result-verdict { color:#087443; }
