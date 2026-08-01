@@ -94,6 +94,20 @@ h2 { margin:0 0 12px; font-size:1.05rem; }
 .question-nav.top { margin:-4px 0 14px; }
 .question-nav.bottom { margin-top:16px; }
 .practice-setup { display:grid; gap:24px; }
+.progress-overview { display:grid; gap:8px; padding:13px; border:1px solid var(--line); border-radius:3px; background:white; }
+.progress-overview > div:first-child { display:flex; justify-content:space-between; gap:12px; align-items:baseline; }
+.progress-overview span { color:var(--muted); font-size:.78rem; }
+.progress-stack { display:flex; height:8px; overflow:hidden; border-radius:2px; background:#e5ece9; }
+.progress-stack > i { display:block; height:100%; min-width:0; }
+.progress-stack > i.is-unanswered { background:#dfe6e2; }
+.progress-stack > i.is-wrong { background:#d96b61; }
+.progress-stack > i.is-correct { background:#18865a; }
+.progress-legend { display:flex; flex-wrap:wrap; gap:8px 12px; font-size:.74rem; color:var(--muted); }
+.progress-legend span { display:inline-flex; align-items:center; gap:5px; }
+.progress-legend i { width:9px; height:9px; border-radius:2px; }
+.progress-legend i.is-unanswered { background:#dfe6e2; }
+.progress-legend i.is-wrong { background:#d96b61; }
+.progress-legend i.is-correct { background:#18865a; }
 .filter-group { display:grid; gap:10px; }
 .filter-heading { display:flex; align-items:baseline; justify-content:space-between; gap:12px; border-bottom:1px solid var(--line); padding-bottom:7px; }
 .filter-heading h2 { margin:0; font-size:1rem; }
@@ -104,6 +118,18 @@ h2 { margin:0 0 12px; font-size:1.05rem; }
 .filter-tile { min-height:42px; padding:8px 10px; border:1px solid var(--line); border-radius:3px; background:white; color:var(--ink); font-weight:700; }
 .filter-tile:hover { border-color:var(--brand); }
 .filter-tile.is-selected { border-color:var(--brand); background:var(--brand-soft); color:var(--brand); box-shadow:inset 3px 0 0 var(--brand); }
+.mode-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:7px; }
+.mode-tile { min-height:58px; display:grid; gap:2px; align-content:center; padding:8px 6px; border:1px solid var(--line); border-radius:3px; background:white; color:var(--ink); text-align:center; }
+.mode-tile b { font-size:.9rem; }
+.mode-tile small { color:var(--muted); font-size:.68rem; line-height:1.25; }
+.mode-tile.is-selected { border-color:var(--brand); background:var(--brand-soft); color:var(--brand); box-shadow:inset 0 -3px 0 var(--brand); }
+.category-progress { border:1px solid var(--line); border-radius:3px; background:white; overflow:hidden; }
+.category-progress summary { padding:11px 12px; font-weight:800; cursor:pointer; }
+.category-progress > div { display:grid; max-height:300px; overflow:auto; border-top:1px solid var(--line); }
+.category-progress-row { display:grid; grid-template-columns:minmax(110px,1.2fr) minmax(90px,1fr); gap:6px 10px; align-items:center; padding:9px 12px; border:0; border-bottom:1px solid var(--line); background:white; color:var(--ink); text-align:left; }
+.category-progress-row:last-child { border-bottom:0; }
+.category-progress-row:hover { background:#f7faf8; }
+.category-progress-row small { grid-column:1 / -1; color:var(--muted); font-size:.72rem; }
 .setup-summary { position:sticky; bottom:72px; z-index:5; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px; border:1px solid var(--line); background:rgba(255,255,255,.96); box-shadow:0 8px 22px rgba(20,55,45,.09); backdrop-filter:blur(10px); }
 .setup-summary > div { display:grid; }
 .setup-summary b { font-size:1.1rem; }
@@ -117,5 +143,6 @@ h2 { margin:0 0 12px; font-size:1.05rem; }
 .debug-seed b { display:flex; align-items:center; gap:6px; }
 .debug-seed p { margin:4px 0 0; color:var(--muted); font-size:.78rem; }
 @media (max-width:520px) { .debug-seed { grid-template-columns:1fr; } }
+@media (max-width:520px) { .mode-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .category-progress-row { grid-template-columns:1fr; } }
 @media (max-width:420px) { .settings-action-row { grid-template-columns:minmax(0,1fr); } }
 @media (min-width:640px) { .app-shell { padding-top:38px; } .modal-backdrop { place-items:center; } }

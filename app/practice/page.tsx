@@ -13,7 +13,8 @@ import { createConsultationTemplate } from "@/lib/chatgpt";
 import { adjacentQuestion, filterPracticeQuestions, shufflePracticeQuestions, sortPracticeQuestions } from "@/lib/practiceNavigation";
 import { formatExplanationText, stripDuplicatedChoices } from "@/lib/questionText";
 import { toggleAnswerSelection, UNKNOWN_ANSWER } from "@/lib/answerSelection";
-import { CARD_TYPE_LABELS, ERROR_LABELS, SUBJECT_LABELS, type CardType, type ErrorReason, type Question, type ReadingMistakeType, type Subject } from "@/lib/types";
+import { filterQuestionsByPracticeMode, summarizeProgress, summarizeProgressByCategory, type PracticeMode, type ProgressSummary } from "@/lib/practiceStats";
+import { CARD_TYPE_LABELS, ERROR_LABELS, SUBJECT_LABELS, type Attempt, type Card, type CardType, type ErrorReason, type Question, type ReadingMistakeType, type Subject } from "@/lib/types";
 
 const readingOptions: [ReadingMistakeType,string][] = [["missed_negative","誤っているものを読み落とした"],["missed_positive","正しいものを読み落とした"],["missed_best_answer","最も適切を見落とした"],["wrong_subject","主体を取り違えた"],["missed_condition","時点・条件を見落とした"],["missed_number_or_unit","数値・単位を読み落とした"],["other","その他"]];
 
@@ -23,42 +24,72 @@ function QuestionNavigation({hasPrevious,hasNext,onMove,position}:{hasPrevious:b
 
 const subjectOrder: Subject[] = ["information", "system", "medical"];
 
-function PracticeSetup({questions}:{questions:Question[]|undefined}) {
+const practiceModeOptions: Array<{value:PracticeMode; label:string; help:string}> = [
+  { value:"all", label:"全問", help:"選択範囲すべて" },
+  { value:"unanswered", label:"未解答", help:"まだ解いていない問題" },
+  { value:"wrong", label:"誤答", help:"直近で不正解・わからない" },
+  { value:"flagged", label:"フラグ", help:"重要カード付き" }
+];
+
+function percent(value:number,total:number){return total?Math.round(value/total*100):0}
+
+function ProgressMiniBar({summary}:{summary:ProgressSummary}) {
+  return <div className="progress-stack" aria-label={`未解答${summary.unanswered}問、誤答${summary.wrong}問、正解${summary.correct}問`}>
+    <i className="is-unanswered" style={{width:`${percent(summary.unanswered,summary.total)}%`}}/>
+    <i className="is-wrong" style={{width:`${percent(summary.wrong,summary.total)}%`}}/>
+    <i className="is-correct" style={{width:`${percent(summary.correct,summary.total)}%`}}/>
+  </div>
+}
+
+function PracticeSetup({data}:{data:{questions:Question[];attempts:Attempt[];cards:Card[]}|undefined}) {
   const router=useRouter();
+  const questions=data?.questions;
+  const attempts=data?.attempts??[];
+  const cards=data?.cards??[];
   const years=useMemo(()=>[...new Set((questions??[]).map((question)=>question.examYear))].sort((a,b)=>b-a),[questions]);
   const subjects=useMemo(()=>subjectOrder.filter((subject)=>(questions??[]).some((question)=>question.subject===subject)),[questions]);
-  const [selectedYears,setSelectedYears]=useState<number[]>([]); const [selectedSubjects,setSelectedSubjects]=useState<Subject[]>([]); const initialized=useRef(false);
-  useEffect(()=>{if(!initialized.current&&questions?.length){setSelectedYears(years);setSelectedSubjects(subjects);initialized.current=true}},[questions,subjects,years]);
-  const matching=useMemo(()=>filterPracticeQuestions(questions??[],new Set(selectedYears),new Set(selectedSubjects)),[questions,selectedSubjects,selectedYears]);
+  const [selectedYears,setSelectedYears]=useState<number[]>([]); const [selectedSubjects,setSelectedSubjects]=useState<Subject[]>([]); const [mode,setMode]=useState<PracticeMode>("all");
+  const baseMatching=useMemo(()=>filterPracticeQuestions(questions??[],new Set(selectedYears),new Set(selectedSubjects)),[questions,selectedSubjects,selectedYears]);
+  const matching=useMemo(()=>filterQuestionsByPracticeMode(baseMatching,attempts,cards,mode),[attempts,baseMatching,cards,mode]);
+  const overall=useMemo(()=>summarizeProgress(questions??[],attempts),[attempts,questions]);
+  const categories=useMemo(()=>summarizeProgressByCategory(questions??[],attempts),[attempts,questions]);
   function toggleYear(year:number){setSelectedYears((current)=>current.includes(year)?current.filter((item)=>item!==year):[...current,year])}
   function toggleSubject(subject:Subject){setSelectedSubjects((current)=>current.includes(subject)?current.filter((item)=>item!==subject):[...current,subject])}
+  function selectCategory(year:number,subject:Subject){setSelectedYears([year]);setSelectedSubjects([subject])}
   function start(){
     if(!matching.length)return;
     const seed=globalThis.crypto?.randomUUID?.()??`${Date.now()}-${Math.random()}`;
-    const session=shufflePracticeQuestions(matching,seed); const next=new URLSearchParams();
-    next.set("id",session[0].id); next.set("years",selectedYears.slice().sort((a,b)=>b-a).join(",")); next.set("subjects",subjectOrder.filter((subject)=>selectedSubjects.includes(subject)).join(",")); next.set("seed",seed);
+    const session=shufflePracticeQuestions(matching,seed); const sessionId=`practice:${seed}`;
+    try{sessionStorage.setItem(sessionId,JSON.stringify(session.map((question)=>question.id)))}catch{}
+    const next=new URLSearchParams();
+    next.set("id",session[0].id); next.set("years",selectedYears.slice().sort((a,b)=>b-a).join(",")); next.set("subjects",subjectOrder.filter((subject)=>selectedSubjects.includes(subject)).join(",")); next.set("mode",mode); next.set("seed",seed); next.set("session",sessionId);
     router.push(`/practice?${next.toString()}`);
   }
-  if(questions===undefined)return <><PageHeader eyebrow="Practice" title="出題設定"/><div className="card"><p>問題を読み込んでいます。</p></div></>;
-  if(!questions.length)return <><PageHeader eyebrow="Practice" title="出題設定"/><div className="card"><p>問題がまだありません。</p><a className="button" href="../import">インポートへ</a></div></>;
+  if(data===undefined)return <><PageHeader eyebrow="Practice" title="出題設定"/><div className="card"><p>問題を読み込んでいます。</p></div></>;
+  if(!questions?.length)return <><PageHeader eyebrow="Practice" title="出題設定"/><div className="card"><p>問題がまだありません。</p><a className="button" href="../import">インポートへ</a></div></>;
   return <><PageHeader eyebrow="Practice" title="出題設定"/><section className="practice-setup">
-    <div className="filter-group"><div className="filter-heading"><h2>年度</h2><span>複数選択可</span></div><div className="filter-grid years">{years.map((year)=><button type="button" className={`filter-tile${selectedYears.includes(year)?" is-selected":""}`} aria-pressed={selectedYears.includes(year)} onClick={()=>toggleYear(year)} key={year}>{year}年度</button>)}</div></div>
+    <div className="progress-overview"><div><b>全体進捗</b><span>{percent(overall.wrong+overall.correct,overall.total)}% 解答済み</span></div><ProgressMiniBar summary={overall}/><div className="progress-legend"><span><i className="is-unanswered"/>未解答 {overall.unanswered}</span><span><i className="is-wrong"/>誤答 {overall.wrong}</span><span><i className="is-correct"/>正解 {overall.correct}</span></div></div>
+    <div className="filter-group"><div className="filter-heading"><h2>年度</h2><span>未選択から開始</span></div><div className="filter-grid years">{years.map((year)=><button type="button" className={`filter-tile${selectedYears.includes(year)?" is-selected":""}`} aria-pressed={selectedYears.includes(year)} onClick={()=>toggleYear(year)} key={year}>{year}年度</button>)}</div></div>
     <div className="filter-group"><div className="filter-heading"><h2>ジャンル</h2><span>複数選択可</span></div><div className="filter-grid subjects">{subjects.map((subject)=><button type="button" className={`filter-tile${selectedSubjects.includes(subject)?" is-selected":""}`} aria-pressed={selectedSubjects.includes(subject)} onClick={()=>toggleSubject(subject)} key={subject}>{SUBJECT_LABELS[subject]}</button>)}</div></div>
-    <div className="setup-summary"><div><b>{matching.length}問</b><span>選択範囲からランダム出題</span></div><button className="button" disabled={!matching.length} onClick={start}><Shuffle size={18}/>演習を開始</button></div>
+    <div className="filter-group"><div className="filter-heading"><h2>出題モード</h2><span>選択範囲に適用</span></div><div className="mode-grid">{practiceModeOptions.map((option)=><button type="button" className={`mode-tile${mode===option.value?" is-selected":""}`} aria-pressed={mode===option.value} onClick={()=>setMode(option.value)} key={option.value}><b>{option.label}</b><small>{option.help}</small></button>)}</div></div>
+    <details className="category-progress" open><summary>カテゴリ別進捗</summary><div>{categories.map((category)=><button type="button" className="category-progress-row" onClick={()=>selectCategory(category.examYear,category.subject)} key={`${category.examYear}-${category.subject}`}><span><b>{category.examYear}年</b> {SUBJECT_LABELS[category.subject]}</span><ProgressMiniBar summary={category}/><small>解答済み {percent(category.wrong+category.correct,category.total)}% ・ 未{category.unanswered} / 誤{category.wrong} / 正{category.correct}</small></button>)}</div></details>
+    <div className="setup-summary"><div><b>{matching.length}問</b><span>{selectedYears.length&&selectedSubjects.length?"選択条件からランダム出題":"年度とジャンルを選んでください"}</span></div><button className="button" disabled={!matching.length} onClick={start}><Shuffle size={18}/>演習を開始</button></div>
   </section></>;
 }
 
 function Practice() {
   const params=useSearchParams(), router=useRouter(); const requested=params.get("id");
-  const allQuery=useLiveQuery(async()=>sortPracticeQuestions(await db.questions.toArray()),[]); const all=allQuery??[];
+  const practiceData=useLiveQuery(async()=>({questions:sortPracticeQuestions(await db.questions.toArray()),attempts:await db.attempts.toArray(),cards:await db.cards.toArray()}),[]); const all=practiceData?.questions??[];
   const question=useLiveQuery(()=>requested?db.questions.get(requested):undefined,[requested],null);
   const sessionKey=params.toString();
   const sessionQuestions=useMemo(()=>{
-    const sessionParams=new URLSearchParams(sessionKey); const seed=sessionParams.get("seed"), yearsValue=sessionParams.get("years"), subjectsValue=sessionParams.get("subjects");
+    const sessionParams=new URLSearchParams(sessionKey); const sessionId=sessionParams.get("session"), seed=sessionParams.get("seed"), yearsValue=sessionParams.get("years"), subjectsValue=sessionParams.get("subjects"), modeValue=sessionParams.get("mode") as PracticeMode | null;
+    if(sessionId&&typeof window!=="undefined"){try{const ids=JSON.parse(window.sessionStorage.getItem(sessionId)??"[]") as string[];if(ids.length){const byId=new Map(all.map((item)=>[item.id,item]));return ids.map((id)=>byId.get(id)).filter((item):item is Question=>Boolean(item))}}catch{}}
     if(!seed||!yearsValue||!subjectsValue)return all;
     const years=new Set(yearsValue.split(",").map(Number).filter(Number.isFinite)); const subjects=new Set(subjectsValue.split(",").filter((value):value is Subject=>subjectOrder.includes(value as Subject)));
-    return shufflePracticeQuestions(filterPracticeQuestions(all,years,subjects),seed);
-  },[all,sessionKey]);
+    const mode:PracticeMode=modeValue==="unanswered"||modeValue==="wrong"||modeValue==="flagged"?modeValue:"all";
+    return shufflePracticeQuestions(filterQuestionsByPracticeMode(filterPracticeQuestions(all,years,subjects),practiceData?.attempts??[],practiceData?.cards??[],mode),seed);
+  },[all,practiceData?.attempts,practiceData?.cards,sessionKey]);
   const choices=useLiveQuery(()=>question?db.choices.where("questionId").equals(question.id).sortBy("label"):[],[question?.id])??[];
   const media=useLiveQuery(()=>question?db.questionMedia.where("questionId").equals(question.id).sortBy("order"):[],[question?.id])??[];
   const [answers,setAnswers]=useState<string[]>([]); const [unknownSelected,setUnknownSelected]=useState(false); const [attemptId,setAttemptId]=useState<string>(); const [correct,setCorrect]=useState<boolean>(); const [grading,setGrading]=useState(false); const [analysisOpen,setAnalysisOpen]=useState(false); const started=useRef(Date.now()); const resultRef=useRef<HTMLElement>(null);
@@ -72,7 +103,7 @@ function Practice() {
   async function saveAnalysis(){if(!question||!attemptId||!primary)return;await db.errorAnalyses.add({id:makeId(),attemptId,questionId:question.id,primaryReason:primary,secondaryReasons:secondary.filter((x)=>x!==primary),readingMistakeType:primary==="F"?reading:undefined,note:note.trim()||undefined,createdAt:isoNow()});setAnalysisSaved(true);setMessage("分類を保存しました")}
   async function copyTemplate(){if(!question)return;if(!window.confirm("問題文・選択肢を含むテンプレートをクリップボードへコピーします。外部サービスへの送信はご自身で判断してください。"))return;await navigator.clipboard.writeText(createConsultationTemplate(question,choices,unknownSelected?"わからない":multiple?answers:answers[0]));setMessage("相談テンプレートをコピーしました")}
   function move(direction:-1|1){if(!question)return;const target=adjacentQuestion(sessionQuestions,question.id,direction);if(target){const next=new URLSearchParams(params.toString());next.set("id",target.id);router.push(`/practice?${next.toString()}`)}}
-  if(!requested)return <PracticeSetup questions={allQuery}/>;
+  if(!requested)return <PracticeSetup data={practiceData}/>;
   if(question===null)return <><PageHeader eyebrow="Practice" title="問題演習"/><div className="card"><p>問題を読み込んでいます。</p></div></>;
   if(!question)return <><PageHeader eyebrow="Practice" title="問題演習"/><div className="card"><p>指定された問題が見つかりません。</p><a className="button" href="../practice">出題設定へ</a></div></>;
   const needsAnalysis=correct===false||analysisOpen;
