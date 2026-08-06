@@ -24,6 +24,9 @@ jobs:
       - run: npm run build
         env:
           PAGES_BASE_PATH: /${{ github.event.repository.name }}
+      - name: Write deployment marker
+        run: |
+          printf '{"sha":"%s","run_id":"%s","created_at":"%s"}\n' "${GITHUB_SHA}" "${GITHUB_RUN_ID}" "$(date -u +%FT%TZ)" > out/deploy-info.json
       - uses: actions/upload-pages-artifact@v3
         with:
           path: out
@@ -37,5 +40,21 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v5
+        continue-on-error: true
         with:
-          timeout: 1800000
+          timeout: 600000
+      - name: Verify published commit
+        run: |
+          set -euo pipefail
+          url="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/deploy-info.json?sha=${{ github.sha }}"
+          for attempt in $(seq 1 60); do
+            body="$(curl -fsSL -H 'Cache-Control: no-cache' "$url" || true)"
+            if printf '%s' "$body" | grep -Fq "${{ github.sha }}"; then
+              echo "Verified published commit ${{ github.sha }}"
+              exit 0
+            fi
+            echo "Waiting for published commit marker (attempt ${attempt}/60)..."
+            sleep 5
+          done
+          echo "::error::Published deploy-info.json did not match ${{ github.sha }}"
+          exit 1
