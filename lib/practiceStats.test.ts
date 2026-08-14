@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { filterQuestionsByPracticeMode, progressStatus, summarizeProgress, summarizeProgressByCategory } from "./practiceStats";
-import type { Attempt, Card, Question } from "./types";
+import { filterQuestionsByPracticeMode, flaggedQuestionIds, progressStatus, summarizeProgress, summarizeProgressByCategory } from "./practiceStats";
+import type { Attempt, Card, ErrorAnalysis, Question } from "./types";
 
 const questions = [
   { id: "new", examYear: 2026, subject: "information" },
@@ -20,6 +20,10 @@ const cards = [
   { id: "c2", questionId: "wrong", isImportant: false }
 ] as Card[];
 
+const analyses = [
+  { id: "e1", attemptId: "a1", questionId: "wrong", primaryReason: "A", secondaryReasons: [], createdAt: "2026-01-01T00:00:00.000Z" }
+] as ErrorAnalysis[];
+
 describe("practice stats", () => {
   it("uses the latest attempt as the progress status", () => {
     expect(progressStatus("new", attempts)).toBe("unanswered");
@@ -28,9 +32,13 @@ describe("practice stats", () => {
   });
 
   it("filters questions by compact practice modes", () => {
-    expect(filterQuestionsByPracticeMode(questions, attempts, cards, "unanswered").map((q) => q.id)).toEqual(["new", "flagged"]);
-    expect(filterQuestionsByPracticeMode(questions, attempts, cards, "wrong").map((q) => q.id)).toEqual(["wrong"]);
-    expect(filterQuestionsByPracticeMode(questions, attempts, cards, "flagged").map((q) => q.id)).toEqual(["flagged"]);
+    expect(filterQuestionsByPracticeMode(questions, attempts, cards, analyses, "unanswered").map((q) => q.id)).toEqual(["new", "flagged"]);
+    expect(filterQuestionsByPracticeMode(questions, attempts, cards, analyses, "wrong").map((q) => q.id)).toEqual(["wrong"]);
+    expect(filterQuestionsByPracticeMode(questions, attempts, cards, analyses, "flagged").map((q) => q.id)).toEqual(["wrong", "flagged"]);
+  });
+
+  it("treats A-F analyses as flags together with important cards", () => {
+    expect([...flaggedQuestionIds(cards, analyses)].sort()).toEqual(["flagged", "wrong"]);
   });
 
   it("summarizes unanswered, wrong, and correct ratios", () => {

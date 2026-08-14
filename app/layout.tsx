@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { BottomNav } from "@/components/BottomNav";
 import { PwaRegistration } from "@/components/PwaRegistration";
 
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
@@ -13,5 +12,5 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { width: "device-width", initialScale: 1, viewportFit: "cover", themeColor: "#0b6b58" };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="ja"><body><PwaRegistration/><main className="app-shell">{children}</main><BottomNav/></body></html>;
+  return <html lang="ja"><body><PwaRegistration/><main className="app-shell">{children}</main></body></html>;
 }

@@ -2,7 +2,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Brain, Check, CheckCircle2, ChevronLeft, ChevronRight, CircleHelp, Clipboard, Plus, Shuffle, X, XCircle } from "lucide-react";
+import { Brain, Check, CheckCircle2, ChevronLeft, ChevronRight, CircleHelp, Clipboard, ListOrdered, Plus, Shuffle, X, XCircle } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { QuestionMediaList } from "@/components/QuestionMedia";
 import { SafeTable } from "@/components/SafeTable";
@@ -24,12 +24,13 @@ function QuestionNavigation({hasPrevious,hasNext,onMove,position}:{hasPrevious:b
 }
 
 const subjectOrder: Subject[] = ["information", "system", "medical"];
+type PracticeOrder = "sequential" | "random";
 
 const practiceModeOptions: Array<{value:PracticeMode; label:string; help:string}> = [
   { value:"all", label:"全問", help:"選択範囲すべて" },
   { value:"unanswered", label:"未解答", help:"まだ解いていない問題" },
   { value:"wrong", label:"誤答", help:"直近で不正解・わからない" },
-  { value:"flagged", label:"フラグ", help:"重要カード付き" }
+  { value:"flagged", label:"フラグ", help:"A〜F分類・重要" }
 ];
 
 function percent(value:number,total:number){return total?Math.round(value/total*100):0}
@@ -50,9 +51,9 @@ function PracticeSetup({data,initialReason}:{data:{questions:Question[];attempts
   const analyses=data?.analyses??[];
   const years=useMemo(()=>[...new Set((questions??[]).map((question)=>question.examYear))].sort((a,b)=>b-a),[questions]);
   const subjects=useMemo(()=>subjectOrder.filter((subject)=>(questions??[]).some((question)=>question.subject===subject)),[questions]);
-  const [selectedYears,setSelectedYears]=useState<number[]>([]); const [selectedSubjects,setSelectedSubjects]=useState<Subject[]>([]); const [mode,setMode]=useState<PracticeMode>("all"); const [reason,setReason]=useState<ErrorReason|"">(initialReason??"");
+  const [selectedYears,setSelectedYears]=useState<number[]>([]); const [selectedSubjects,setSelectedSubjects]=useState<Subject[]>([]); const [mode,setMode]=useState<PracticeMode>("all"); const [reason,setReason]=useState<ErrorReason|"">(initialReason??""); const [order,setOrder]=useState<PracticeOrder>("sequential");
   const baseMatching=useMemo(()=>filterQuestionsByReason(filterPracticeQuestions(questions??[],new Set(selectedYears),new Set(selectedSubjects)),analyses,reason||undefined),[analyses,questions,reason,selectedSubjects,selectedYears]);
-  const matching=useMemo(()=>filterQuestionsByPracticeMode(baseMatching,attempts,cards,mode),[attempts,baseMatching,cards,mode]);
+  const matching=useMemo(()=>filterQuestionsByPracticeMode(baseMatching,attempts,cards,analyses,mode),[analyses,attempts,baseMatching,cards,mode]);
   const overall=useMemo(()=>summarizeProgress(questions??[],attempts),[attempts,questions]);
   const categories=useMemo(()=>summarizeProgressByCategory(questions??[],attempts),[attempts,questions]);
   function toggleYear(year:number){setSelectedYears((current)=>current.includes(year)?current.filter((item)=>item!==year):[...current,year])}
@@ -61,10 +62,10 @@ function PracticeSetup({data,initialReason}:{data:{questions:Question[];attempts
   function start(){
     if(!matching.length)return;
     const seed=globalThis.crypto?.randomUUID?.()??`${Date.now()}-${Math.random()}`;
-    const session=shufflePracticeQuestions(matching,seed); const sessionId=`practice:${seed}`;
+    const session=order==="random"?shufflePracticeQuestions(matching,seed):matching.slice(); const sessionId=`practice:${seed}`;
     try{sessionStorage.setItem(sessionId,JSON.stringify(session.map((question)=>question.id)))}catch{}
     const next=new URLSearchParams();
-    next.set("id",session[0].id); next.set("years",selectedYears.slice().sort((a,b)=>b-a).join(",")); next.set("subjects",subjectOrder.filter((subject)=>selectedSubjects.includes(subject)).join(",")); next.set("mode",mode); if(reason)next.set("reason",reason); next.set("seed",seed); next.set("session",sessionId);
+    next.set("id",session[0].id); next.set("years",selectedYears.slice().sort((a,b)=>b-a).join(",")); next.set("subjects",subjectOrder.filter((subject)=>selectedSubjects.includes(subject)).join(",")); next.set("mode",mode); next.set("order",order); if(reason)next.set("reason",reason); next.set("seed",seed); next.set("session",sessionId);
     router.push(`/practice?${next.toString()}`);
   }
   if(data===undefined)return <><PageHeader eyebrow="Practice" title="出題設定"/><div className="card"><p>問題を読み込んでいます。</p></div></>;
@@ -74,9 +75,10 @@ function PracticeSetup({data,initialReason}:{data:{questions:Question[];attempts
     <div className="filter-group"><div className="filter-heading"><h2>年度</h2><span>未選択から開始</span></div><div className="filter-grid years">{years.map((year)=><button type="button" className={`filter-tile${selectedYears.includes(year)?" is-selected":""}`} aria-pressed={selectedYears.includes(year)} onClick={()=>toggleYear(year)} key={year}>{year}年度</button>)}</div></div>
     <div className="filter-group"><div className="filter-heading"><h2>ジャンル</h2><span>複数選択可</span></div><div className="filter-grid subjects">{subjects.map((subject)=><button type="button" className={`filter-tile${selectedSubjects.includes(subject)?" is-selected":""}`} aria-pressed={selectedSubjects.includes(subject)} onClick={()=>toggleSubject(subject)} key={subject}>{SUBJECT_LABELS[subject]}</button>)}</div></div>
     <div className="filter-group"><div className="filter-heading"><h2>出題モード</h2><span>選択範囲に適用</span></div><div className="mode-grid">{practiceModeOptions.map((option)=><button type="button" className={`mode-tile${mode===option.value?" is-selected":""}`} aria-pressed={mode===option.value} onClick={()=>setMode(option.value)} key={option.value}><b>{option.label}</b><small>{option.help}</small></button>)}</div></div>
+    <div className="filter-group"><div className="filter-heading"><h2>出題順</h2><span>番号順がデフォルト</span></div><div className="order-toggle"><button type="button" className={`mode-tile${order==="sequential"?" is-selected":""}`} aria-pressed={order==="sequential"} onClick={()=>setOrder("sequential")}><b>番号順</b><small>年度・ジャンル内で問番号順</small></button><button type="button" className={`mode-tile${order==="random"?" is-selected":""}`} aria-pressed={order==="random"} onClick={()=>setOrder("random")}><b>ランダム</b><small>選択範囲からシャッフル</small></button></div></div>
     <div className="filter-group"><div className="filter-heading"><h2>A〜F分類</h2><span>任意</span></div><div className="reason-chip-grid"><button type="button" className={`reason-chip${reason===""?" is-selected":""}`} aria-pressed={reason===""} onClick={()=>setReason("")}>全分類</button>{(Object.keys(ERROR_LABELS) as ErrorReason[]).map((key)=><button type="button" className={`reason-chip${reason===key?" is-selected":""}`} aria-pressed={reason===key} onClick={()=>setReason(key)} key={key}><b>{key}</b><small>{ERROR_LABELS[key]}</small></button>)}</div></div>
     <details className="category-progress" open><summary>カテゴリ別進捗</summary><div>{categories.map((category)=><button type="button" className="category-progress-row" onClick={()=>selectCategory(category.examYear,category.subject)} key={`${category.examYear}-${category.subject}`}><span><b>{category.examYear}年</b> {SUBJECT_LABELS[category.subject]}</span><ProgressMiniBar summary={category}/><small>解答済み {percent(category.wrong+category.correct,category.total)}% ・ 未{category.unanswered} / 誤{category.wrong} / 正{category.correct}</small></button>)}</div></details>
-    <div className="setup-summary"><div><b>{matching.length}問</b><span>{selectedYears.length&&selectedSubjects.length?"選択条件からランダム出題":"年度とジャンルを選んでください"}</span></div><button className="button" disabled={!matching.length} onClick={start}><Shuffle size={18}/>演習を開始</button></div>
+    <div className="setup-summary"><div><b>{matching.length}問</b><span>{selectedYears.length&&selectedSubjects.length?order==="random"?"選択範囲からランダム出題":"選択範囲を番号順に出題":"年度とジャンルを選んでください"}</span></div><button className="button" disabled={!matching.length} onClick={start}>{order==="random"?<Shuffle size={18}/>:<ListOrdered size={18}/>}演習を開始</button></div>
   </section></>;
 }
 
@@ -87,13 +89,14 @@ function Practice() {
   const question=useLiveQuery(()=>requested?db.questions.get(requested):undefined,[requested],null);
   const sessionKey=params.toString();
   const sessionQuestions=useMemo(()=>{
-    const sessionParams=new URLSearchParams(sessionKey); const sessionId=sessionParams.get("session"), seed=sessionParams.get("seed"), yearsValue=sessionParams.get("years"), subjectsValue=sessionParams.get("subjects"), modeValue=sessionParams.get("mode") as PracticeMode | null, reasonValue=sessionParams.get("reason");
+    const sessionParams=new URLSearchParams(sessionKey); const sessionId=sessionParams.get("session"), seed=sessionParams.get("seed"), yearsValue=sessionParams.get("years"), subjectsValue=sessionParams.get("subjects"), modeValue=sessionParams.get("mode") as PracticeMode | null, reasonValue=sessionParams.get("reason"), orderValue=sessionParams.get("order") as PracticeOrder | null;
     if(sessionId&&typeof window!=="undefined"){try{const ids=JSON.parse(window.sessionStorage.getItem(sessionId)??"[]") as string[];if(ids.length){const byId=new Map(all.map((item)=>[item.id,item]));return ids.map((id)=>byId.get(id)).filter((item):item is Question=>Boolean(item))}}catch{}}
     if(!seed||!yearsValue||!subjectsValue)return all;
     const years=new Set(yearsValue.split(",").map(Number).filter(Number.isFinite)); const subjects=new Set(subjectsValue.split(",").filter((value):value is Subject=>subjectOrder.includes(value as Subject)));
     const mode:PracticeMode=modeValue==="unanswered"||modeValue==="wrong"||modeValue==="flagged"?modeValue:"all";
     const reason=isErrorReason(reasonValue)?reasonValue:undefined;
-    return shufflePracticeQuestions(filterQuestionsByPracticeMode(filterQuestionsByReason(filterPracticeQuestions(all,years,subjects),practiceData?.analyses??[],reason),practiceData?.attempts??[],practiceData?.cards??[],mode),seed);
+    const filtered=filterQuestionsByPracticeMode(filterQuestionsByReason(filterPracticeQuestions(all,years,subjects),practiceData?.analyses??[],reason),practiceData?.attempts??[],practiceData?.cards??[],practiceData?.analyses??[],mode);
+    return orderValue==="random"?shufflePracticeQuestions(filtered,seed):filtered;
   },[all,practiceData?.analyses,practiceData?.attempts,practiceData?.cards,sessionKey]);
   const choices=useLiveQuery(()=>question?db.choices.where("questionId").equals(question.id).sortBy("label"):[],[question?.id])??[];
   const media=useLiveQuery(()=>question?db.questionMedia.where("questionId").equals(question.id).sortBy("order"):[],[question?.id])??[];
@@ -101,6 +104,7 @@ function Practice() {
   const [primary,setPrimary]=useState<ErrorReason>(); const [secondary,setSecondary]=useState<ErrorReason[]>([]); const [reading,setReading]=useState<ReadingMistakeType>(); const [note,setNote]=useState(""); const [analysisSaved,setAnalysisSaved]=useState(false); const [cardOpen,setCardOpen]=useState(false); const [message,setMessage]=useState("");
   useEffect(()=>{setAnswers([]);setUnknownSelected(false);setAttemptId(undefined);setCorrect(undefined);setGrading(false);setAnalysisOpen(false);setPrimary(undefined);setSecondary([]);setReading(undefined);setNote("");setAnalysisSaved(false);setCardOpen(false);setMessage("");started.current=Date.now()},[question?.id]);
   useEffect(()=>{if(correct!==undefined)requestAnimationFrame(()=>resultRef.current?.scrollIntoView({behavior:"smooth",block:"nearest"}))},[correct]);
+  useEffect(()=>{if(requested&&typeof window!=="undefined")localStorage.setItem("lastPracticeHref",`/practice?${params.toString()}`)},[params,requested]);
   const multiple=question?Array.isArray(question.correctAnswer)||question.questionType==="multiple_choice":false;
   function toggle(label:string){if(correct!==undefined||grading)return;setUnknownSelected(false);setAnswers((current)=>toggleAnswerSelection(current,label,multiple))}
   function toggleUnknown(){if(correct!==undefined||grading)return;setAnswers([]);setUnknownSelected((current)=>!current)}
@@ -125,7 +129,7 @@ function Practice() {
     {correct===undefined&&<button className="button primary-action" disabled={(!answers.length&&!unknownSelected)||grading} onClick={()=>void grade()}>{grading?"採点中…":"この内容で回答する"}</button>}
     {correct!==undefined && <section ref={resultRef} role="status" aria-live="polite" className={`result-panel result-reveal ${correct?"is-correct":"is-wrong"}`}><div className="result-verdict">{correct?<CheckCircle2 aria-hidden="true"/>:<XCircle aria-hidden="true"/>}<strong>{unknownSelected?"わからないとして記録しました":correct?"正解です":"不正解です"}</strong></div><div><b>正解：</b>{Array.isArray(question.correctAnswer)?question.correctAnswer.join(", "):question.correctAnswer}</div>{displayedExplanation&&<div><b>この問題の解説</b><p className="explanation-text">{displayedExplanation}</p></div>}<SafeTable html={question.explanationTableHtml}/><QuestionMediaList items={media.filter((item)=>item.role==="explanation")}/></section>}
     {attemptId&&needsAnalysis&&!analysisSaved&&<section className="card stack" style={{marginTop:12}}><div><h2 style={{marginBottom:4}}>A〜Fで振り返る</h2><p className="muted tiny" style={{margin:0}}>{correct?"迷った理由を残せます（任意）":"primary reasonを選んでください。後回しにもできます。"}</p></div>
-      <div className="stack">{Object.entries(ERROR_LABELS).map(([value,label])=><label className="choice" key={value}><input type="radio" name="reason" checked={primary===value} onChange={()=>setPrimary(value as ErrorReason)}/><b>{value}</b><span>{label}</span></label>)}</div>
+      <div className="reason-select-grid">{Object.entries(ERROR_LABELS).map(([value,label])=><button type="button" className={`reason-select-tile${primary===value?" is-selected":""}`} aria-pressed={primary===value} onClick={()=>setPrimary(value as ErrorReason)} key={value}><b>{value}</b><span>{label}</span></button>)}</div>
       {primary&&<div className="field"><span>副次的な理由（複数可）</span><div style={{display:"flex",flexWrap:"wrap",gap:7}}>{(Object.keys(ERROR_LABELS) as ErrorReason[]).filter((x)=>x!==primary).map((x)=><label className="pill" key={x}><input type="checkbox" checked={secondary.includes(x)} onChange={()=>setSecondary((old)=>old.includes(x)?old.filter((v)=>v!==x):[...old,x])}/>{x}</label>)}</div></div>}
       {primary==="F"&&<select className="select" value={reading??""} onChange={(e)=>setReading(e.target.value as ReadingMistakeType)}><option value="">読み落としパターンを選択</option>{readingOptions.map(([v,l])=><option value={v} key={v}>{l}</option>)}</select>}
       <textarea className="textarea" placeholder="短いメモ（任意）" value={note} onChange={(e)=>setNote(e.target.value)}/><button className="button" disabled={!primary} onClick={saveAnalysis}>分類を保存</button>
@@ -140,6 +144,6 @@ function Practice() {
 function CardModal({questionId,subject,initialReason,onClose,onSaved}:{questionId:string;subject:"information"|"medical"|"system";initialReason?:ErrorReason;onClose:()=>void;onSaved:()=>void}){
   const [front,setFront]=useState(""),[back,setBack]=useState(""),[type,setType]=useState<CardType>("term"),[tags,setTags]=useState(""),[important,setImportant]=useState(false),[sourceReason,setSourceReason]=useState<ErrorReason|"">(initialReason??"");
   async function save(){const now=isoNow(),id=makeId();const due=new Date();due.setDate(due.getDate()+1);await db.cards.add({id,questionId,subject,cardType:type,front:front.trim(),back:back.trim(),tags:tags.split(",").map((x)=>x.trim()).filter(Boolean),dueAt:due.toISOString(),intervalDays:1,reviewCount:0,successCount:0,failureCount:0,isImportant:important,sourceReason:sourceReason||undefined,createdAt:now,updatedAt:now});await ensureSchedule("card",id,1);onSaved()}
-  return <div className="modal-backdrop" role="dialog" aria-modal="true"><div className="modal stack"><div style={{display:"flex",justifyContent:"space-between"}}><div><p className="eyebrow">Memory card</p><h2>論点をカード化</h2></div><button className="button ghost" onClick={onClose} aria-label="閉じる"><X size={18}/></button></div><div className="notice">問題文を丸ごと写さず、自分の言葉でまとめましょう。</div><select className="select" value={type} onChange={(e)=>setType(e.target.value as CardType)}>{Object.entries(CARD_TYPE_LABELS).map(([v,l])=><option value={v} key={v}>{l}カード</option>)}</select><select className="select" value={sourceReason} onChange={(e)=>setSourceReason(e.target.value as ErrorReason|"")}><option value="">A〜F由来なし</option>{Object.entries(ERROR_LABELS).map(([v,l])=><option value={v} key={v}>{v}: {l}</option>)}</select><label className="field">表面<input className="input" value={front} onChange={(e)=>setFront(e.target.value)}/></label><label className="field">裏面<textarea className="textarea" value={back} onChange={(e)=>setBack(e.target.value)}/></label><label className="field">タグ（カンマ区切り）<input className="input" value={tags} onChange={(e)=>setTags(e.target.value)}/></label><label className="choice"><input type="checkbox" checked={important} onChange={(e)=>setImportant(e.target.checked)}/><Brain size={19}/><span>試験前週に再表示する重要カード</span></label><button className="button" disabled={!front.trim()||!back.trim()} onClick={save}>カードを保存</button></div></div>
+  return <div className="modal-backdrop" role="dialog" aria-modal="true"><div className="modal stack"><div style={{display:"flex",justifyContent:"space-between"}}><div><p className="eyebrow">Memory card</p><h2>論点をカード化</h2></div><button className="button ghost" onClick={onClose} aria-label="閉じる"><X size={18}/></button></div><div className="notice">問題文を丸ごと写さず、自分の言葉でまとめましょう。</div><select className="select" value={type} onChange={(e)=>setType(e.target.value as CardType)}>{Object.entries(CARD_TYPE_LABELS).map(([v,l])=><option value={v} key={v}>{l}カード</option>)}</select><select className="select" value={sourceReason} onChange={(e)=>setSourceReason(e.target.value as ErrorReason|"")}><option value="">A〜F由来なし</option>{Object.entries(ERROR_LABELS).map(([v,l])=><option value={v} key={v}>{v}: {l}</option>)}</select><label className="field">表面<input className="input" value={front} onChange={(e)=>setFront(e.target.value)}/></label><label className="field">裏面<textarea className="textarea" value={back} onChange={(e)=>setBack(e.target.value)}/></label><label className="field">タグ（カンマ区切り）<input className="input" value={tags} onChange={(e)=>setTags(e.target.value)}/></label><label className="choice"><input type="checkbox" checked={important} onChange={(e)=>setImportant(e.target.checked)}/><Brain size={19}/><span>重要フラグとして扱う（A〜F分類済みの問題もフラグ扱い）</span></label><button className="button" disabled={!front.trim()||!back.trim()} onClick={save}>カードを保存</button></div></div>
 }
 export default function PracticePage(){return <Suspense><Practice/></Suspense>}

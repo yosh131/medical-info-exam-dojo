@@ -1,4 +1,4 @@
-import type { Attempt, Card, Question, Subject } from "./types";
+import type { Attempt, Card, ErrorAnalysis, Question, Subject } from "./types";
 
 export type PracticeMode = "all" | "unanswered" | "wrong" | "flagged";
 export type ProgressStatus = "unanswered" | "wrong" | "correct";
@@ -29,18 +29,21 @@ export function progressStatus(questionId: string, attempts: Attempt[]): Progres
   return latest.isCorrect ? "correct" : "wrong";
 }
 
-export function importantQuestionIds(cards: Card[]) {
-  return new Set(cards.filter((card) => card.isImportant && card.questionId).map((card) => card.questionId as string));
+export function flaggedQuestionIds(cards: Card[], analyses: ErrorAnalysis[] = []) {
+  const ids = new Set(cards.filter((card) => card.isImportant && card.questionId).map((card) => card.questionId as string));
+  for (const analysis of analyses) ids.add(analysis.questionId);
+  return ids;
 }
 
 export function filterQuestionsByPracticeMode<T extends Pick<Question, "id">>(
   questions: T[],
   attempts: Attempt[],
   cards: Card[],
+  analyses: ErrorAnalysis[],
   mode: PracticeMode
 ) {
   if (mode === "all") return questions;
-  const flagged = mode === "flagged" ? importantQuestionIds(cards) : undefined;
+  const flagged = mode === "flagged" ? flaggedQuestionIds(cards, analyses) : undefined;
   return questions.filter((question) => {
     if (mode === "flagged") return flagged?.has(question.id) ?? false;
     const status = progressStatus(question.id, attempts);
